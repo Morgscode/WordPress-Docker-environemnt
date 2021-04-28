@@ -1,0 +1,70 @@
+# a standard docker-composer development environemnt for WordPress
+# author: Luke Morgan
+# quick reference: https://docs.docker.com/samples/wordpress/
+
+# uses - [ WordPress:latest with v-hosts config, MySQL:5.7, phpMyAdmin ]
+
+# place this file in the root of your WordPress project
+
+version: '3'
+
+services: 
+
+    # Database
+    db:
+        image: mysql:5.7
+        restart: always
+        volumes: 
+            - db_data:/var/lib/mysql
+        environment: 
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_DATABASE: kumi_solutions_wp_local
+            MYSQL_USER: kumi_solutions_wp_user
+            MYSQL_PASSWORD: wordpress
+        networks: 
+            - kumiwpsite
+
+    # WordPress 
+    # current known issue with db conn: https://github.com/docker-library/wordpress/issues/576
+    # be sure to update the wp config fallback params as defined below
+    wordpress: 
+        depends_on: 
+            - db
+        image: wordpress:latest
+        ports: 
+            - '80:80' 
+        restart: always
+        volumes: 
+            - './:/var/www/html'
+            - './docker/apache/my_vhost.conf:/vhosts/my_vhost.conf:ro'
+        environment:
+            WORDPRESS_DB_HOST: db
+            WORDPRESS_DB_USER: kumi_solutions_wp_user
+            WORDPRESS_DB_PASS: wordpress
+            WORDPRESS_DB_NAME: kumi_solutions_wp_local
+            WORDPRESS_TABLE_PREFIX: ks_
+            WORDPRESS_DEBUG: 1
+        networks: 
+            - kumiwpsite
+
+    # phpMyAdmin 
+    phpmyadmin: 
+        depends_on: 
+            - db
+        image: phpmyadmin/phpmyadmin
+        restart: always
+        ports: 
+            - '8889:80'
+        environment: 
+            PMA_HOST: db
+            MYSQL_ROOT_PASSWORD: password
+            PMA_USER: kumi_solutions_wp_user
+            PMA_PASSWORD: wordpress
+            UPLOAD_LIMIT: 512M
+        networks: 
+            - kumiwpsite
+
+networks: 
+    kumiwpsite:
+volumes: 
+    db_data: {}   
